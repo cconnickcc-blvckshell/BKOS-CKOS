@@ -5,6 +5,8 @@ import { CampaignBatchActions } from "@/components/curation/campaign-batch-actio
 import { CampaignProgressCard } from "@/components/curation/campaign-progress-card";
 import { AnalyzeCampaignGapsButton } from "@/components/gaps/analyze-campaign-gaps-button";
 import { CampaignGapsPanel } from "@/components/gaps/campaign-gaps-panel";
+import { SuggestSourcesForCampaignButton } from "@/components/discovery/suggest-sources-button";
+import { CampaignDiscoverySuggestionsPanel } from "@/components/discovery/discovery-suggestions-panel";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -64,6 +66,7 @@ export default async function CurationCampaignDetailPage({
           <>
             <CampaignBatchActions campaignId={id} />
             <AnalyzeCampaignGapsButton campaignId={id} />
+            <SuggestSourcesForCampaignButton campaignId={id} />
             <Badge variant="secondary">
               {(campaign.curation_campaign_statuses as { label: string }).label}
             </Badge>
@@ -114,6 +117,10 @@ export default async function CurationCampaignDetailPage({
           </CardContent>
         </Card>
       )}
+
+      <div className="mb-6">
+        <CampaignDiscoverySuggestionsPanel campaignId={id} />
+      </div>
 
       <Card className="mb-6 border-border/60">
         <CardHeader>

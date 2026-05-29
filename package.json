@@ -17,7 +17,8 @@
     "test:ai-normalization": "tsx scripts/validate-ai-normalization.ts",
     "test:decision-engine": "tsx scripts/validate-decision-engine.ts",
     "test:curation-campaigns": "tsx scripts/validate-curation-campaigns.ts",
-    "test:knowledge-gaps": "tsx scripts/validate-knowledge-gaps.ts"
+    "test:knowledge-gaps": "tsx scripts/validate-knowledge-gaps.ts",
+    "test:source-discovery": "tsx scripts/validate-source-discovery.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",

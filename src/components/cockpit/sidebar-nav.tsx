@@ -19,6 +19,7 @@ import {
   Sparkles,
   FolderKanban,
   CircleAlert,
+  Lightbulb,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
@@ -34,6 +35,7 @@ const navItems = [
   { href: "/normalization", label: "Normalization Queue", icon: ListChecks },
   { href: "/curation", label: "Curation Campaigns", icon: FolderKanban },
   { href: "/gaps", label: "Knowledge Gaps", icon: CircleAlert },
+  { href: "/discovery", label: "Source Discovery", icon: Lightbulb },
   { href: "/embeddings", label: "Embedding Jobs", icon: Sparkles },
   { href: "/workflows", label: "Workflow Explorer", icon: Workflow },
   { href: "/failures", label: "Failure Explorer", icon: AlertTriangle },

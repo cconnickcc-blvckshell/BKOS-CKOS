@@ -35,6 +35,12 @@ Production-grade knowledge operating system for AI image and video generation. C
 - Failure Explorer UI with create/edit, causes, fixes, and linking
 - See `docs/FAILURE_INTELLIGENCE.md` · `npm run test:failures`
 
+## Phase 2 Slice 8 (source discovery suggestions)
+
+- `discovery_statuses`, `discovery_suggestion_sources`, `source_discovery_suggestions`, `gap_discovery_links`
+- Gap-driven trusted URL / search-target suggestions with approve → add to campaign (no auto-fetch)
+- See `docs/SOURCE_DISCOVERY.md` · `npm run test:source-discovery`
+
 ## Phase 2 Slice 7 (knowledge gap detection)
 
 - `gap_statuses`, `gap_severity_levels`, `gap_types`, `knowledge_gaps`, evidence and link tables

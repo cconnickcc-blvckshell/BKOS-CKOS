@@ -1,6 +1,8 @@
 import { getKnowledgeGap, listGapStatuses } from "@/actions/gaps";
 import { PageHeader } from "@/components/cockpit/page-header";
 import { GapResolutionForm } from "@/components/gaps/gap-resolution-form";
+import { SuggestSourcesForGapButton } from "@/components/discovery/suggest-sources-button";
+import { GapDiscoverySuggestions } from "@/components/discovery/gap-discovery-suggestions";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
@@ -53,6 +55,7 @@ export default async function KnowledgeGapDetailPage({
         description={gap.description ?? undefined}
         actions={
           <>
+            <SuggestSourcesForGapButton gapId={id} />
             <Badge variant="outline">{(gap.gap_types as { label: string }).label}</Badge>
             <Badge variant="secondary">{(gap.gap_statuses as { label: string }).label}</Badge>
             <Badge
@@ -124,6 +127,10 @@ export default async function KnowledgeGapDetailPage({
             )}
           </CardContent>
         </Card>
+      </div>
+
+      <div className="mb-6">
+        <GapDiscoverySuggestions gapId={id} />
       </div>
 
       <Card className="border-border/60">
