@@ -15,6 +15,7 @@ import {
   Brain,
   LogOut,
   Download,
+  ListChecks,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
@@ -27,6 +28,7 @@ const navItems = [
   { href: "/entities", label: "Canonical Entities", icon: Boxes },
   { href: "/sources", label: "Source Explorer", icon: Database },
   { href: "/acquisition", label: "Source Acquisition", icon: Download },
+  { href: "/normalization", label: "Normalization Queue", icon: ListChecks },
   { href: "/workflows", label: "Workflow Explorer", icon: Workflow },
   { href: "/failures", label: "Failure Explorer", icon: AlertTriangle },
   { href: "/recipes", label: "Recipe Explorer", icon: ChefHat },

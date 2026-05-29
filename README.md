@@ -35,6 +35,13 @@ Production-grade knowledge operating system for AI image and video generation. C
 - Failure Explorer UI with create/edit, causes, fixes, and linking
 - See `docs/FAILURE_INTELLIGENCE.md` · `npm run test:failures`
 
+## Phase 2 Slice 2 (knowledge normalization queue)
+
+- `normalization_statuses`, `normalization_templates`, `normalization_jobs`, `normalization_job_outputs`, `normalization_review_decisions`
+- Manual draft editor, approve/reject workflow, published `knowledge_records` with `source_version_id` attribution
+- Entity alias resolution via existing `resolve_entity_alias` RPC
+- See `docs/KNOWLEDGE_NORMALIZATION.md` · `npm run test:normalization`
+
 ## Phase 2 Slice 1 (source acquisition)
 
 - `acquisition_statuses`, `trusted_source_domains`, `source_crawl_policies`

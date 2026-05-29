@@ -1,9 +1,12 @@
 import { getSource } from "@/actions/sources";
 import { getExtractionForVersion } from "@/actions/acquisition";
+import { listKnowledgeDomains } from "@/actions/entities";
+import { listNormalizationTemplates } from "@/actions/normalization";
 import { PageHeader } from "@/components/cockpit/page-header";
 import { SourceVersionForm } from "@/components/forms/source-version-form";
 import { FetchSourceButton } from "@/components/acquisition/fetch-source-button";
 import { ExtractionReviewPanel } from "@/components/acquisition/extraction-review-panel";
+import { CreateNormalizationJobForm } from "@/components/normalization/create-normalization-job-form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { createClient } from "@/lib/supabase/server";
@@ -43,6 +46,10 @@ export default async function SourceDetailPage({
   const latestExtraction = latestVersion
     ? await getExtractionForVersion(latestVersion.id)
     : null;
+
+  const [domains, templates] = latestExtraction
+    ? await Promise.all([listKnowledgeDomains(), listNormalizationTemplates()])
+    : [[], []];
 
   return (
     <>
@@ -90,6 +97,13 @@ export default async function SourceDetailPage({
               ).acquisition_statuses,
             }}
           />
+          <div className="mt-4">
+            <CreateNormalizationJobForm
+              extractionId={latestExtraction.id}
+              domains={domains.map((d) => ({ code: d.code, label: d.label }))}
+              templates={templates.map((t) => ({ code: t.code, label: t.label }))}
+            />
+          </div>
         </div>
       )}
 
