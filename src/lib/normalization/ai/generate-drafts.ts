@@ -4,12 +4,14 @@ import { writeAudit } from "@/lib/audit";
 import { getNormalizationStatusId } from "@/lib/normalization/normalization-status";
 import { buildCitations } from "@/lib/normalization/citations";
 import { renderPromptTemplate } from "@/lib/normalization/ai/prompt-render";
-import { callOpenAiDraftExtraction } from "@/lib/normalization/ai/openai-draft";
+import { generateAiDraftJson, isAiProviderEnabled } from "@/lib/providers/ai";
+import { resolveAiProviderForJob } from "@/lib/providers/ai/resolve-db-config";
+import { getAiProviderStatusMessage } from "@/lib/providers/ai/config";
 import {
   adjustConfidenceForQuotes,
   type SourceQuoteRef,
 } from "@/lib/normalization/ai/quote-verify";
-import type { AiProposalDraft, AiProviderConfig, PromptTemplateRow } from "@/lib/normalization/ai/types";
+import type { AiProposalDraft, PromptTemplateRow } from "@/lib/normalization/ai/types";
 
 function parseProposals(parsed: unknown): AiProposalDraft[] {
   if (!parsed || typeof parsed !== "object") return [];
@@ -103,18 +105,12 @@ export async function generateAiNormalizationDrafts(jobId: string, userId: strin
     ai_provider_config_id: string;
   };
 
-  const { data: providerRow } = await supabase
-    .from("ai_provider_configs")
-    .select("*")
-    .eq("id", prompt.ai_provider_config_id)
-    .eq("is_active", true)
-    .single();
-
-  if (!providerRow) {
-    throw new Error("No active AI provider configuration");
+  if (!isAiProviderEnabled()) {
+    const msg = getAiProviderStatusMessage();
+    throw new Error(msg || "AI provider disabled");
   }
 
-  const provider = providerRow as AiProviderConfig;
+  const provider = await resolveAiProviderForJob();
   const inProgressId = await getNormalizationStatusId("in_progress");
   const succeededId = await getNormalizationStatusId("succeeded");
   const failedId = await getNormalizationStatusId("failed");
@@ -162,8 +158,7 @@ export async function generateAiNormalizationDrafts(jobId: string, userId: strin
       source_text: sourceText.slice(0, 24000),
     });
 
-    const { raw, parsed } = await callOpenAiDraftExtraction(
-      provider,
+    const { raw, parsed } = await generateAiDraftJson(
       prompt.system_prompt,
       userPrompt
     );

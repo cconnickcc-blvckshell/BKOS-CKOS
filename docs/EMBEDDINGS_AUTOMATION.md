@@ -1,52 +1,31 @@
 # Embeddings automation (Phase 2 Slice 3)
 
-CKOS queues and processes **embedding jobs** for all major knowledge-bearing entities. Jobs are **idempotent**: unchanged content (SHA-256 `content_hash`) skips re-embedding.
+| Table | Purpose |
+|-------|---------|
+| `embedding_statuses` | pending, in_progress, succeeded, failed, skipped, **provider_disabled** |
+| `embedding_model_configs` | Provider/model/dimensions (seed; env drives runtime) |
+| `embedding_jobs` | Queue with content-hash idempotency |
+| `embeddings` | Stored vectors (1536-dim column; local dims padded) |
 
-## Tables
+## Provider
 
-| Table | Role |
-|-------|------|
-| `embedding_statuses` | pending, in_progress, succeeded, failed, skipped |
-| `embedding_model_configs` | Provider/model/dimensions (seed: OpenAI `text-embedding-3-small`, 1536) |
-| `embedding_jobs` | Queue + audit trail per embed attempt |
-| `embeddings` | Extended with `content_hash`, `provider`, `dimensions`, `token_estimate`, `embedding_model_config_id` |
+Set `EMBEDDING_PROVIDER` in `.env.local`:
 
-## Auto-enqueue triggers
+- `disabled` — jobs finalize as **provider_disabled**; full-text search still works.
+- `ollama` — `http://localhost:11434/api/embeddings`
+- `lmstudio` / `openai_compatible` — `/v1/embeddings`
+- `openai` — optional legacy cloud
 
-| Event | Entity type |
-|-------|-------------|
-| Knowledge record created | `knowledge_record` |
-| Normalization output approved | `knowledge_record` |
-| Workflow created / re-analyzed | `workflow`, `workflow_analysis` |
-| Failure created / updated | `failure_record` |
-| Recipe version snapshot | `recipe_version`, `recipe` |
-| Source extraction saved (reviewable) | `source_extraction_result` |
+## Flow
 
-## Processing
-
-1. `enqueueEmbeddingJob` builds text via `buildEmbeddableContent`, hashes content.
-2. Skips if hash matches existing `embeddings.content_hash` (unless `forceRebuild`).
-3. Inserts `embedding_jobs` row + audit `embedding_job_enqueue`.
-4. If `OPENAI_API_KEY` is set, processes immediately; otherwise job stays **pending** with a clear message.
-5. Upserts `embeddings` with model config metadata on success.
-
-## UI
-
-- `/embeddings` — job dashboard, process queue, manual generate/rebuild by entity UUID
-- `/search` — enriched results: domain, entity/knowledge type, source citation, match reason
-
-## Manual actions
-
-- **Generate embeddings** — enqueue + process one entity
-- **Rebuild embeddings** — force new job even if hash unchanged
-- **Process pending queue** — batch up to 25 pending jobs
+1. Approved knowledge (and other embeddable types) enqueue jobs.
+2. Content hash skips unchanged work.
+3. Adapter generates vector; stored padded to 1536 if needed.
+4. Semantic search uses vectors when present; otherwise hybrid/FTS fallback.
 
 ## Tests
 
 ```bash
 npm run test:embeddings
+npm run test:local-providers
 ```
-
-## Future providers
-
-Add rows to `embedding_model_configs` and extend `src/lib/embeddings/providers/` — no TypeScript enums required.

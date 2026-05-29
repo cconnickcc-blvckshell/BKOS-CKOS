@@ -96,7 +96,9 @@ export function EmbeddingAdminActions() {
         </Button>
       </div>
       <p className="text-xs text-muted-foreground">
-        Without OPENAI_API_KEY, jobs stay pending. Content hash prevents duplicate work.
+        Set EMBEDDING_PROVIDER to enable semantic search (Ollama, LM Studio, or
+        OpenAI-compatible). With EMBEDDING_PROVIDER=disabled, jobs are marked
+        provider_disabled and full-text search still works.
       </p>
     </div>
   );

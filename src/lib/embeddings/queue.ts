@@ -4,7 +4,12 @@ import { writeAudit } from "@/lib/audit";
 import { getEmbeddingStatusId } from "@/lib/embeddings/embedding-status";
 import { buildEmbeddableContent, isEmbeddableEntityType } from "@/lib/embeddings/content";
 import { hashEmbeddableContent, estimateTokens } from "@/lib/embeddings/hash";
-import { generateOpenAIEmbedding } from "@/lib/embeddings/providers/openai";
+import {
+  generateEmbeddingWithMeta,
+  getEmbeddingRuntimeConfig,
+  isEmbeddingProviderEnabled,
+  getEmbeddingProviderStatusMessage,
+} from "@/lib/providers/embedding";
 
 export type EnqueueResult = {
   jobId?: string;
@@ -14,11 +19,19 @@ export type EnqueueResult = {
 };
 
 async function getActiveModelConfig() {
+  const runtime = getEmbeddingRuntimeConfig();
+  if (!runtime.enabled) return null;
+
+  const providerKey =
+    runtime.kind === "openai_compatible"
+      ? "openai_compatible"
+      : runtime.kind;
+
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("embedding_model_configs")
     .select("*")
-    .eq("is_active", true)
+    .eq("provider", providerKey)
     .limit(1)
     .maybeSingle();
   if (error) throw new Error(error.message);
@@ -44,9 +57,17 @@ export async function enqueueEmbeddingJob(options: {
 
   const contentHash = hashEmbeddableContent(built.text);
   const supabase = await createClient();
+  if (!isEmbeddingProviderEnabled()) {
+    return {
+      skipped: true,
+      reason:
+        getEmbeddingProviderStatusMessage() || "Embedding provider disabled",
+    };
+  }
+
   const modelConfig = await getActiveModelConfig();
   if (!modelConfig) {
-    return { skipped: true, reason: "No active embedding model config" };
+    return { skipped: true, reason: "No embedding model config in database" };
   }
 
   const { data: existingEmbed } = await supabase
@@ -163,35 +184,35 @@ export async function processEmbeddingJob(
     max_input_tokens: number;
   };
 
-  if (!process.env.OPENAI_API_KEY) {
-    const pendingId = await getEmbeddingStatusId("pending");
-    await supabase
-      .from("embedding_jobs")
-      .update({
-        status_id: pendingId,
-        error_message: "OPENAI_API_KEY not configured — job remains queued",
-        started_at: null,
-      })
-      .eq("id", jobId);
-    return { ok: false, error: "OPENAI_API_KEY not configured" };
+  if (!isEmbeddingProviderEnabled()) {
+    const providerDisabledId = await getEmbeddingStatusId("provider_disabled");
+    await finalizeJob(
+      jobId,
+      providerDisabledId,
+      getEmbeddingProviderStatusMessage() || "Embedding provider disabled",
+      null
+    );
+    return { ok: true, skipped: true };
   }
 
-  try {
-    let vector: number[] | null = null;
-    let tokenEstimate = job.token_estimate;
+  const runtime = getEmbeddingRuntimeConfig();
 
-    if (config.provider === "openai") {
-      const result = await generateOpenAIEmbedding(built.text, config);
-      if (!result) {
-        await finalizeJob(jobId, failedId, "Provider returned no embedding", null);
-        return { ok: false, error: "Provider returned no embedding" };
-      }
-      vector = result.vector;
-      tokenEstimate = result.tokenEstimate;
-    } else {
-      await finalizeJob(jobId, failedId, `Unsupported provider: ${config.provider}`, null);
-      return { ok: false, error: `Unsupported provider: ${config.provider}` };
+  try {
+    const result = await generateEmbeddingWithMeta(
+      built.text,
+      config.max_input_tokens
+    );
+    if (!result) {
+      await finalizeJob(
+        jobId,
+        failedId,
+        "Embedding provider returned no vector",
+        null
+      );
+      return { ok: false, error: "Embedding provider returned no vector" };
     }
+    const vector = result.vector;
+    const tokenEstimate = result.tokenEstimate;
 
     await supabase.from("embeddings").upsert(
       {
@@ -200,11 +221,11 @@ export async function processEmbeddingJob(
         chunk_index: 0,
         content_text: built.text.slice(0, 50000),
         embedding: vector,
-        embedding_model: config.model,
+        embedding_model: runtime.model || config.model,
         content_hash: contentHash,
         embedding_model_config_id: job.embedding_model_config_id,
-        provider: config.provider,
-        dimensions: config.dimensions,
+        provider: runtime.kind,
+        dimensions: runtime.dimensions,
         token_estimate: tokenEstimate,
         metadata: built.metadata,
         created_by: userId,

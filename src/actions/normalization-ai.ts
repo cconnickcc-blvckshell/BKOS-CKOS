@@ -3,6 +3,20 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { generateAiNormalizationDrafts } from "@/lib/normalization/ai/generate-drafts";
+import {
+  getAiProviderStatusMessage,
+  isAiProviderEnabled,
+} from "@/lib/providers/ai";
+
+export async function getAiDraftAvailability() {
+  if (!isAiProviderEnabled()) {
+    return {
+      enabled: false,
+      message: getAiProviderStatusMessage(),
+    };
+  }
+  return { enabled: true, message: null as string | null };
+}
 
 export async function generateAiDraftsForJob(jobId: string) {
   const supabase = await createClient();
@@ -11,10 +25,11 @@ export async function generateAiDraftsForJob(jobId: string) {
   } = await supabase.auth.getUser();
   if (!user) return { error: "Unauthorized" };
 
-  if (!process.env.OPENAI_API_KEY) {
+  if (!isAiProviderEnabled()) {
     return {
       error:
-        "OPENAI_API_KEY is not configured. Add it to your environment to use AI draft generation.",
+        getAiProviderStatusMessage() ||
+        "AI provider disabled. Use manual normalization or configure AI_PROVIDER.",
     };
   }
 

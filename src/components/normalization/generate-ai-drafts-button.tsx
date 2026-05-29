@@ -6,7 +6,15 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Sparkles } from "lucide-react";
 
-export function GenerateAiDraftsButton({ jobId }: { jobId: string }) {
+export function GenerateAiDraftsButton({
+  jobId,
+  aiEnabled = true,
+  disabledMessage,
+}: {
+  jobId: string;
+  aiEnabled?: boolean;
+  disabledMessage?: string | null;
+}) {
   const [pending, setPending] = useState(false);
 
   async function handleGenerate() {
@@ -27,6 +35,15 @@ export function GenerateAiDraftsButton({ jobId }: { jobId: string }) {
     }
   }
 
+  if (!aiEnabled) {
+    return (
+      <Button type="button" size="sm" variant="outline" disabled title={disabledMessage ?? undefined}>
+        <Sparkles className="mr-2 size-4" />
+        AI provider disabled
+      </Button>
+    );
+  }
+
   return (
     <Button
       type="button"
@@ -34,6 +51,7 @@ export function GenerateAiDraftsButton({ jobId }: { jobId: string }) {
       variant="default"
       disabled={pending}
       onClick={handleGenerate}
+      title={disabledMessage ?? undefined}
     >
       <Sparkles className="mr-2 size-4" />
       {pending ? "Generating…" : "Generate AI Drafts"}

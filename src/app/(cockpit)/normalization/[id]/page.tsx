@@ -1,4 +1,5 @@
 import { getNormalizationJob } from "@/actions/normalization";
+import { getAiDraftAvailability } from "@/actions/normalization-ai";
 import { PageHeader } from "@/components/cockpit/page-header";
 import { AiRunsPanel } from "@/components/normalization/ai-runs-panel";
 import { GenerateAiDraftsButton } from "@/components/normalization/generate-ai-drafts-button";
@@ -29,6 +30,7 @@ export default async function NormalizationJobDetailPage({
   }
 
   const { job, outputs } = data;
+  const aiAvailability = await getAiDraftAvailability();
   const domainCode = (job.knowledge_domains as { code: string }).code;
   const extraction = job.source_extraction_results as {
     title: string | null;
@@ -53,7 +55,11 @@ export default async function NormalizationJobDetailPage({
         }
         actions={
           <>
-            <GenerateAiDraftsButton jobId={id} />
+            <GenerateAiDraftsButton
+              jobId={id}
+              aiEnabled={aiAvailability.enabled}
+              disabledMessage={aiAvailability.message}
+            />
             <Badge variant="secondary">
               {(job.normalization_statuses as { label: string }).label}
             </Badge>
@@ -109,8 +115,9 @@ export default async function NormalizationJobDetailPage({
             {aiOutputs.length === 0 ? (
               <Card className="border-border/60">
                 <CardContent className="py-6 text-sm text-muted-foreground">
-                  No AI proposals yet. Click Generate AI Drafts to extract draft cards
-                  from the source text (requires OPENAI_API_KEY).
+                  No AI proposals yet. Configure an AI provider (Ollama, LM Studio, or
+                  OpenAI-compatible) or use manual drafts above. With AI_PROVIDER=disabled,
+                  only manual normalization is available.
                 </CardContent>
               </Card>
             ) : (

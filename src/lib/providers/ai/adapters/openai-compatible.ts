@@ -1,25 +1,19 @@
-import type { AiProviderConfig } from "@/lib/normalization/ai/types";
+import type { AiRuntimeConfig } from "@/lib/providers/types";
+import { authHeaders, openAiCompatibleBase } from "@/lib/providers/http";
 
-export async function callOpenAiDraftExtraction(
-  config: AiProviderConfig,
+export async function chatCompletionsJson(
+  config: AiRuntimeConfig,
   systemPrompt: string,
   userPrompt: string
 ): Promise<{ raw: string; parsed: unknown }> {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
-    throw new Error("OPENAI_API_KEY is not configured. AI draft generation is unavailable.");
-  }
-
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+  const base = openAiCompatibleBase(config.baseUrl);
+  const response = await fetch(`${base}/chat/completions`, {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
+    headers: authHeaders(config.apiKey),
     body: JSON.stringify({
       model: config.model,
-      temperature: Number(config.temperature),
-      max_tokens: config.max_tokens,
+      temperature: config.temperature,
+      max_tokens: config.maxTokens,
       response_format: { type: "json_object" },
       messages: [
         { role: "system", content: systemPrompt },
@@ -30,7 +24,7 @@ export async function callOpenAiDraftExtraction(
 
   if (!response.ok) {
     const err = await response.text();
-    throw new Error(`OpenAI API error: ${err.slice(0, 500)}`);
+    throw new Error(`AI provider error (${response.status}): ${err.slice(0, 500)}`);
   }
 
   const data = (await response.json()) as {
@@ -38,7 +32,7 @@ export async function callOpenAiDraftExtraction(
   };
 
   const raw = data.choices?.[0]?.message?.content?.trim() ?? "";
-  if (!raw) throw new Error("Empty response from OpenAI");
+  if (!raw) throw new Error("Empty response from AI provider");
 
   let parsed: unknown;
   try {
