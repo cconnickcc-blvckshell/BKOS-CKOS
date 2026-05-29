@@ -1,10 +1,18 @@
 import { getNormalizationJob } from "@/actions/normalization";
 import { PageHeader } from "@/components/cockpit/page-header";
+import { AiRunsPanel } from "@/components/normalization/ai-runs-panel";
+import { GenerateAiDraftsButton } from "@/components/normalization/generate-ai-drafts-button";
 import { NormalizationOutputEditor } from "@/components/normalization/normalization-output-editor";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+
+type JobOutput = {
+  id: string;
+  is_ai_proposal?: boolean;
+  [key: string]: unknown;
+};
 
 export default async function NormalizationJobDetailPage({
   params,
@@ -32,6 +40,8 @@ export default async function NormalizationJobDetailPage({
   };
 
   const sourceId = extraction.source_versions.sources.id;
+  const manualOutputs = (outputs as JobOutput[]).filter((o) => !o.is_ai_proposal);
+  const aiOutputs = (outputs as JobOutput[]).filter((o) => o.is_ai_proposal);
 
   return (
     <>
@@ -43,6 +53,7 @@ export default async function NormalizationJobDetailPage({
         }
         actions={
           <>
+            <GenerateAiDraftsButton jobId={id} />
             <Badge variant="secondary">
               {(job.normalization_statuses as { label: string }).label}
             </Badge>
@@ -60,27 +71,68 @@ export default async function NormalizationJobDetailPage({
         </Link>
         {" · "}
         Domain: {(job.knowledge_domains as { label: string }).label}
+        {" · "}
+        AI proposals are untrusted drafts — approve only after verifying source quotes.
       </p>
 
-      {outputs.length === 0 ? (
-        <Card className="border-border/60">
-          <CardContent className="py-8 text-sm text-muted-foreground">
-            No draft outputs on this job.
-          </CardContent>
-        </Card>
-      ) : (
-        outputs.map((output) => (
-          <div key={output.id} className="mb-6">
-            <NormalizationOutputEditor
-              output={
-                output as Parameters<typeof NormalizationOutputEditor>[0]["output"]
-              }
-              domainCode={domainCode}
-              extractionMarkdown={extraction.extracted_markdown}
-            />
-          </div>
-        ))
-      )}
+      <div className="mb-6 grid gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-2 space-y-6">
+          <section>
+            <h2 className="mb-3 text-sm font-medium text-muted-foreground">
+              Manual draft
+            </h2>
+            {manualOutputs.length === 0 ? (
+              <Card className="border-border/60">
+                <CardContent className="py-6 text-sm text-muted-foreground">
+                  No manual draft output on this job.
+                </CardContent>
+              </Card>
+            ) : (
+              manualOutputs.map((output) => (
+                <div key={output.id} className="mb-4">
+                  <NormalizationOutputEditor
+                    output={
+                      output as Parameters<typeof NormalizationOutputEditor>[0]["output"]
+                    }
+                    domainCode={domainCode}
+                    extractionMarkdown={extraction.extracted_markdown}
+                  />
+                </div>
+              ))
+            )}
+          </section>
+
+          <section>
+            <h2 className="mb-3 text-sm font-medium text-muted-foreground">
+              AI proposals ({aiOutputs.length})
+            </h2>
+            {aiOutputs.length === 0 ? (
+              <Card className="border-border/60">
+                <CardContent className="py-6 text-sm text-muted-foreground">
+                  No AI proposals yet. Click Generate AI Drafts to extract draft cards
+                  from the source text (requires OPENAI_API_KEY).
+                </CardContent>
+              </Card>
+            ) : (
+              aiOutputs.map((output) => (
+                <div key={output.id} className="mb-4">
+                  <NormalizationOutputEditor
+                    output={
+                      output as Parameters<typeof NormalizationOutputEditor>[0]["output"]
+                    }
+                    domainCode={domainCode}
+                    extractionMarkdown={extraction.extracted_markdown}
+                  />
+                </div>
+              ))
+            )}
+          </section>
+        </div>
+
+        <aside className="space-y-6">
+          <AiRunsPanel jobId={id} />
+        </aside>
+      </div>
 
       <Card className="border-border/60">
         <CardHeader>

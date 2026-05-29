@@ -13,6 +13,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import Link from "next/link";
+import { AlertTriangle, Bot } from "lucide-react";
+
+type SourceQuoteRef = { quote: string; context?: string };
 
 type Output = {
   id: string;
@@ -23,6 +26,9 @@ type Output = {
   resolved_entity_id: string | null;
   confidence_score: number | null;
   review_notes: string | null;
+  extraction_notes: string | null;
+  source_quote_refs: SourceQuoteRef[] | null;
+  is_ai_proposal?: boolean;
   citations: unknown;
   normalization_statuses: { code: string; label: string } | null;
   entities: { canonical_slug: string; display_name: string } | null;
@@ -47,6 +53,10 @@ export function NormalizationOutputEditor({
   const approvedRecordId = output.normalization_review_decisions?.find(
     (d) => d.decision === "approved"
   )?.created_knowledge_record_id;
+  const isAi = Boolean(output.is_ai_proposal);
+  const quotes = Array.isArray(output.source_quote_refs) ? output.source_quote_refs : [];
+  const lowConfidence =
+    output.confidence_score != null && output.confidence_score <= 0.35;
 
   const jsonString = JSON.stringify(output.proposed_structured_data ?? {}, null, 2);
 
@@ -95,10 +105,28 @@ export function NormalizationOutputEditor({
   }
 
   return (
-    <div className="space-y-4 rounded-lg border border-border/60 p-4">
+    <div
+      className={`space-y-4 rounded-lg border p-4 ${
+        isAi ? "border-amber-500/40 bg-amber-500/5" : "border-border/60"
+      }`}
+    >
       <div className="flex flex-wrap items-center gap-2">
-        <span className="font-medium">Draft knowledge record</span>
+        <span className="font-medium">
+          {isAi ? "AI-proposed draft" : "Draft knowledge record"}
+        </span>
+        {isAi && (
+          <Badge variant="outline" className="gap-1">
+            <Bot className="size-3" />
+            AI proposal
+          </Badge>
+        )}
         <Badge variant="secondary">{output.normalization_statuses?.label}</Badge>
+        {lowConfidence && (
+          <Badge variant="destructive" className="gap-1">
+            <AlertTriangle className="size-3" />
+            Low confidence
+          </Badge>
+        )}
         {output.entities && (
           <Badge variant="outline">
             {output.entities.display_name} ({output.entities.canonical_slug})
@@ -110,6 +138,32 @@ export function NormalizationOutputEditor({
           </Link>
         )}
       </div>
+
+      {isAi && output.extraction_notes && (
+        <p className="rounded-md bg-muted/80 p-2 text-sm text-muted-foreground">
+          {output.extraction_notes}
+        </p>
+      )}
+
+      {quotes.length > 0 && (
+        <details className="text-sm" open={isAi && !finalized}>
+          <summary className="cursor-pointer font-medium">
+            Source quotes ({quotes.length})
+          </summary>
+          <ul className="mt-2 space-y-2">
+            {quotes.map((ref, i) => (
+              <li key={i} className="rounded-md border border-border/50 p-2 text-xs">
+                <blockquote className="border-l-2 border-primary/40 pl-2 italic">
+                  {ref.quote}
+                </blockquote>
+                {ref.context && (
+                  <p className="mt-1 text-muted-foreground">{ref.context}</p>
+                )}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
 
       {extractionMarkdown && !finalized && (
         <details className="text-sm">
@@ -171,6 +225,18 @@ export function NormalizationOutputEditor({
             />
           </div>
         </div>
+        {isAi && (
+          <div className="space-y-2">
+            <Label htmlFor={`extraction_notes_${output.id}`}>Extraction notes</Label>
+            <Textarea
+              id={`extraction_notes_${output.id}`}
+              name="extraction_notes"
+              rows={2}
+              defaultValue={output.extraction_notes ?? ""}
+              disabled={finalized}
+            />
+          </div>
+        )}
         <div className="space-y-2">
           <Label htmlFor={`structured_${output.id}`}>Structured data (JSON)</Label>
           <Textarea

@@ -35,6 +35,13 @@ Production-grade knowledge operating system for AI image and video generation. C
 - Failure Explorer UI with create/edit, causes, fixes, and linking
 - See `docs/FAILURE_INTELLIGENCE.md` · `npm run test:failures`
 
+## Phase 2 Slice 4 (AI-assisted draft normalization)
+
+- `ai_provider_configs`, `prompt_templates`, `normalization_ai_runs`
+- AI proposes `normalization_job_outputs` only (`is_ai_proposal`, `source_quote_refs`, `extraction_notes`)
+- Human approve/reject before publish; `OPENAI_API_KEY` optional with graceful error
+- See `docs/AI_NORMALIZATION.md` · `npm run test:ai-normalization`
+
 ## Phase 2 Slice 3 (embeddings automation)
 
 - `embedding_statuses`, `embedding_model_configs`, `embedding_jobs`

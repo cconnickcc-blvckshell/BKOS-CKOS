@@ -63,8 +63,12 @@ flowchart LR
 npm run test:normalization
 ```
 
+## Related
+
+- **AI draft proposals** (Slice 4): see `docs/AI_NORMALIZATION.md` — AI never publishes; approval flow here is unchanged.
+
 ## Out of scope
 
-- Autonomous or AI publishing (optional AI may be added later as draft-only)
+- Autonomous publishing or auto-approval
 - Overwriting existing knowledge records
 - Agents, crawling, auto-normalization

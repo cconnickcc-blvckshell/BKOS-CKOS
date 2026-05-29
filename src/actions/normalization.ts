@@ -257,6 +257,7 @@ const outputSchema = z.object({
   proposed_entity_alias: z.string().optional(),
   confidence_score: z.coerce.number().min(0).max(1).optional(),
   review_notes: z.string().optional(),
+  extraction_notes: z.string().optional(),
   domain_code: z.string().min(1),
 });
 
@@ -274,6 +275,7 @@ export async function updateNormalizationOutput(outputId: string, formData: Form
     proposed_entity_alias: formData.get("proposed_entity_alias") || undefined,
     confidence_score: formData.get("confidence_score") || undefined,
     review_notes: formData.get("review_notes") || undefined,
+    extraction_notes: formData.get("extraction_notes") || undefined,
     domain_code: formData.get("domain_code"),
   });
 
@@ -322,6 +324,7 @@ export async function updateNormalizationOutput(outputId: string, formData: Form
       resolved_entity_id: resolvedEntityId,
       confidence_score: parsed.data.confidence_score ?? null,
       review_notes: parsed.data.review_notes ?? null,
+      extraction_notes: parsed.data.extraction_notes ?? null,
     })
     .eq("id", outputId);
 
