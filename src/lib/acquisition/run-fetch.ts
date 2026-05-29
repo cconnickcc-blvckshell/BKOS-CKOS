@@ -266,6 +266,14 @@ export async function runSourceFetch(
     extraction_id: extraction.id,
   });
 
+  const { enqueueEmbeddingJob } = await import("@/lib/embeddings/queue");
+  await enqueueEmbeddingJob({
+    entityType: "source_extraction_result",
+    entityId: extraction.id,
+    userId,
+    metadata: { review_status: "pending_review" },
+  });
+
   return {
     ok: true,
     jobId: job.id,

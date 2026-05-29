@@ -4,10 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveStatusId } from "@/lib/status";
 import { writeAudit } from "@/lib/audit";
-import {
-  buildEmbeddingText,
-  generateEmbedding,
-} from "@/lib/embeddings";
+import { enqueueEmbeddingJob } from "@/lib/embeddings/queue";
 import { z } from "zod";
 
 const recordSchema = z.object({
@@ -64,37 +61,14 @@ export async function createKnowledgeRecord(formData: FormData) {
 
   if (error) return { error: error.message };
 
-  await upsertRecordEmbedding(data.id, data.title, data.summary, user.id);
+  await enqueueEmbeddingJob({
+    entityType: "knowledge_record",
+    entityId: data.id,
+    userId: user.id,
+  });
   await writeAudit("create", "knowledge_record", data.id, parsed.data);
   revalidatePath("/knowledge");
   return { id: data.id };
-}
-
-async function upsertRecordEmbedding(
-  recordId: string,
-  title: string,
-  summary: string | null,
-  userId: string
-) {
-  const text = buildEmbeddingText([title, summary]);
-  const embedding = await generateEmbedding(text);
-  if (!embedding) return;
-
-  const supabase = await createClient();
-  const statusId = await getActiveStatusId();
-
-  await supabase.from("embeddings").upsert(
-    {
-      entity_type: "knowledge_record",
-      entity_id: recordId,
-      chunk_index: 0,
-      content_text: text,
-      embedding,
-      created_by: userId,
-      status: statusId,
-    },
-    { onConflict: "entity_type,entity_id,chunk_index" }
-  );
 }
 
 export async function listKnowledgeRecords(typeId?: string) {

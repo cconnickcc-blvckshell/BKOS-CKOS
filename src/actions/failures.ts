@@ -210,6 +210,14 @@ export async function createFailure(formData: FormData) {
     .single();
 
   if (error) return { error: error.message };
+
+  const { enqueueEmbeddingJob } = await import("@/lib/embeddings/queue");
+  await enqueueEmbeddingJob({
+    entityType: "failure_record",
+    entityId: data.id,
+    userId: user.id,
+  });
+
   await writeAudit("create", "failure_record", data.id, parsed.data);
   revalidatePath("/failures");
   return { id: data.id };
@@ -265,6 +273,14 @@ export async function updateFailure(id: string, formData: FormData) {
     .eq("id", id);
 
   if (error) return { error: error.message };
+
+  const { enqueueEmbeddingJob } = await import("@/lib/embeddings/queue");
+  await enqueueEmbeddingJob({
+    entityType: "failure_record",
+    entityId: id,
+    userId: user.id,
+  });
+
   await writeAudit("update", "failure_record", id, parsed.data);
   revalidatePath(`/failures/${id}`);
   revalidatePath("/failures");

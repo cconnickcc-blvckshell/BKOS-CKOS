@@ -35,6 +35,13 @@ Production-grade knowledge operating system for AI image and video generation. C
 - Failure Explorer UI with create/edit, causes, fixes, and linking
 - See `docs/FAILURE_INTELLIGENCE.md` · `npm run test:failures`
 
+## Phase 2 Slice 3 (embeddings automation)
+
+- `embedding_statuses`, `embedding_model_configs`, `embedding_jobs`
+- Idempotent content hashing, auto-enqueue on knowledge/workflows/failures/recipes/extractions
+- Embedding dashboard + enriched semantic search with citations
+- See `docs/EMBEDDINGS_AUTOMATION.md` · `npm run test:embeddings`
+
 ## Phase 2 Slice 2 (knowledge normalization queue)
 
 - `normalization_statuses`, `normalization_templates`, `normalization_jobs`, `normalization_job_outputs`, `normalization_review_decisions`

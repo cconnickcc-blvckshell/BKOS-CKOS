@@ -155,18 +155,36 @@ async function snapshotRecipeVersion(recipeId: string, userId: string, changeNot
   const versionNumber = (latest?.version_number ?? 0) + 1;
   const statusId = await getActiveStatusId();
 
-  await supabase.from("recipe_versions").insert({
-    recipe_id: recipeId,
-    version_number: versionNumber,
-    title: recipe.title,
-    objective: recipe.objective ?? recipe.goal,
-    steps_snapshot: steps ?? [],
-    parameters_snapshot: recipe.default_parameters ?? {},
-    quality_checks_snapshot: recipe.quality_checks ?? {},
-    change_notes: changeNotes,
-    created_by: userId,
-    status: statusId,
-  });
+  const { data: versionRow } = await supabase
+    .from("recipe_versions")
+    .insert({
+      recipe_id: recipeId,
+      version_number: versionNumber,
+      title: recipe.title,
+      objective: recipe.objective ?? recipe.goal,
+      steps_snapshot: steps ?? [],
+      parameters_snapshot: recipe.default_parameters ?? {},
+      quality_checks_snapshot: recipe.quality_checks ?? {},
+      change_notes: changeNotes,
+      created_by: userId,
+      status: statusId,
+    })
+    .select("id")
+    .single();
+
+  if (versionRow?.id) {
+    const { enqueueEmbeddingJob } = await import("@/lib/embeddings/queue");
+    await enqueueEmbeddingJob({
+      entityType: "recipe_version",
+      entityId: versionRow.id,
+      userId,
+    });
+    await enqueueEmbeddingJob({
+      entityType: "recipe",
+      entityId: recipeId,
+      userId,
+    });
+  }
 }
 
 export async function createRecipe(formData: FormData) {

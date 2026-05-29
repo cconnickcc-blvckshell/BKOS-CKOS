@@ -12,7 +12,8 @@
     "test:failures": "tsx scripts/validate-failures.ts",
     "test:recipes": "tsx scripts/validate-recipes.ts",
     "test:acquisition": "tsx scripts/validate-acquisition.ts",
-    "test:normalization": "tsx scripts/validate-normalization.ts"
+    "test:normalization": "tsx scripts/validate-normalization.ts",
+    "test:embeddings": "tsx scripts/validate-embeddings.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",

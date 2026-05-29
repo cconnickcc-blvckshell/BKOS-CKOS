@@ -6,10 +6,7 @@ import { getActiveStatusId } from "@/lib/status";
 import { writeAudit } from "@/lib/audit";
 import { parseComfyWorkflow } from "@/lib/workflows/parser";
 import { runWorkflowAnalysis } from "@/lib/workflows/persist-analysis";
-import {
-  buildEmbeddingText,
-  generateEmbedding,
-} from "@/lib/embeddings";
+import { enqueueEmbeddingJob } from "@/lib/embeddings/queue";
 import { z } from "zod";
 
 const workflowSchema = z.object({
@@ -62,30 +59,26 @@ export async function createWorkflow(formData: FormData) {
   if (error) return { error: error.message };
 
   try {
-    await runWorkflowAnalysis(workflow.id, workflowJson, user.id);
+    const analysis = await runWorkflowAnalysis(workflow.id, workflowJson, user.id);
+    await enqueueEmbeddingJob({
+      entityType: "workflow",
+      entityId: workflow.id,
+      userId: user.id,
+    });
+    if (analysis?.analysisId) {
+      await enqueueEmbeddingJob({
+        entityType: "workflow_analysis",
+        entityId: analysis.analysisId,
+        userId: user.id,
+      });
+    }
   } catch (e) {
     console.error("Workflow analysis failed:", e);
-  }
-
-  const embedText = buildEmbeddingText([
-    workflow.title,
-    workflow.description,
-    JSON.stringify(workflowJson).slice(0, 4000),
-  ]);
-  const embedding = await generateEmbedding(embedText);
-  if (embedding) {
-    await supabase.from("embeddings").upsert(
-      {
-        entity_type: "workflow",
-        entity_id: workflow.id,
-        chunk_index: 0,
-        content_text: embedText,
-        embedding,
-        created_by: user.id,
-        status: statusId,
-      },
-      { onConflict: "entity_type,entity_id,chunk_index" }
-    );
+    await enqueueEmbeddingJob({
+      entityType: "workflow",
+      entityId: workflow.id,
+      userId: user.id,
+    });
   }
 
   await writeAudit("create", "workflow", workflow.id, { title: parsed.data.title });
@@ -109,11 +102,23 @@ export async function reanalyzeWorkflow(workflowId: string) {
   if (error || !workflow) return { error: "Workflow not found" };
 
   try {
-    await runWorkflowAnalysis(
+    const analysis = await runWorkflowAnalysis(
       workflowId,
       workflow.workflow_json as Record<string, unknown>,
       user.id
     );
+    await enqueueEmbeddingJob({
+      entityType: "workflow",
+      entityId: workflowId,
+      userId: user.id,
+    });
+    if (analysis?.analysisId) {
+      await enqueueEmbeddingJob({
+        entityType: "workflow_analysis",
+        entityId: analysis.analysisId,
+        userId: user.id,
+      });
+    }
     await writeAudit("reanalyze", "workflow", workflowId, {});
     revalidatePath(`/workflows/${workflowId}`);
     revalidatePath("/workflows");

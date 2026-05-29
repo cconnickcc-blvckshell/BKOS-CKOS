@@ -7,10 +7,7 @@ import { writeAudit } from "@/lib/audit";
 import { resolveEntityAlias } from "@/lib/entities/resolver";
 import { getNormalizationStatusId } from "@/lib/normalization/normalization-status";
 import { buildCitations } from "@/lib/normalization/citations";
-import {
-  buildEmbeddingText,
-  generateEmbedding,
-} from "@/lib/embeddings";
+import { enqueueEmbeddingJob } from "@/lib/embeddings/queue";
 import { z } from "zod";
 
 export async function listNormalizationStatuses() {
@@ -414,22 +411,12 @@ export async function approveNormalizationOutput(outputId: string, notes?: strin
 
   if (recErr || !record) return { error: recErr?.message ?? "Failed to create knowledge record" };
 
-  const text = buildEmbeddingText([record.title, record.summary]);
-  const embedding = await generateEmbedding(text);
-  if (embedding) {
-    await supabase.from("embeddings").upsert(
-      {
-        entity_type: "knowledge_record",
-        entity_id: record.id,
-        chunk_index: 0,
-        content_text: text,
-        embedding,
-        created_by: user.id,
-        status: entityStatusId,
-      },
-      { onConflict: "entity_type,entity_id,chunk_index" }
-    );
-  }
+  await enqueueEmbeddingJob({
+    entityType: "knowledge_record",
+    entityId: record.id,
+    userId: user.id,
+    metadata: { via: "normalization_approve", output_id: outputId },
+  });
 
   await supabase.from("normalization_review_decisions").insert({
     normalization_job_output_id: outputId,
