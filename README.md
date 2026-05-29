@@ -27,6 +27,14 @@ Production-grade knowledge operating system for AI image and video generation. C
 - Deterministic analysis on ingest + **Re-analyze** action
 - See `docs/WORKFLOW_ANALYSIS_SCORING.md` · `npm run test:workflows`
 
+## Phase 1.5 Slice 3 (failure intelligence)
+
+- `severity_levels`, `failure_categories`, `failure_causes`, `failure_fixes`
+- `workflow_failure_links`, `knowledge_failure_links`
+- Extended `failure_records` (domain + entity aware; legacy JSONB preserved)
+- Failure Explorer UI with create/edit, causes, fixes, and linking
+- See `docs/FAILURE_INTELLIGENCE.md` · `npm run test:failures`
+
 ## Stack
 
 - Next.js 15 · TypeScript · Tailwind · shadcn/ui
