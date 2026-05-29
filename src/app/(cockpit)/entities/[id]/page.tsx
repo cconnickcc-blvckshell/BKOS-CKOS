@@ -1,6 +1,8 @@
 import { getEntity } from "@/actions/entities";
 import { PageHeader } from "@/components/cockpit/page-header";
 import { AddAliasForm } from "@/components/entities/add-alias-form";
+import { AnalyzeEntityGapsButton } from "@/components/gaps/analyze-entity-gaps-button";
+import { EntityGapsPanel } from "@/components/gaps/entity-gaps-panel";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { notFound } from "next/navigation";
@@ -37,9 +39,14 @@ export default async function EntityDetailPage({
             <Badge>
               {(entity.knowledge_domains as { label?: string })?.label}
             </Badge>
+            <AnalyzeEntityGapsButton entityId={id} />
           </>
         }
       />
+
+      <div className="mb-6">
+        <EntityGapsPanel entityId={id} />
+      </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card className="border-border/60">

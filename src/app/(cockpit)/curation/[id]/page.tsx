@@ -3,6 +3,8 @@ import { PageHeader } from "@/components/cockpit/page-header";
 import { AddCampaignUrlForm } from "@/components/curation/add-campaign-url-form";
 import { CampaignBatchActions } from "@/components/curation/campaign-batch-actions";
 import { CampaignProgressCard } from "@/components/curation/campaign-progress-card";
+import { AnalyzeCampaignGapsButton } from "@/components/gaps/analyze-campaign-gaps-button";
+import { CampaignGapsPanel } from "@/components/gaps/campaign-gaps-panel";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -61,6 +63,7 @@ export default async function CurationCampaignDetailPage({
         actions={
           <>
             <CampaignBatchActions campaignId={id} />
+            <AnalyzeCampaignGapsButton campaignId={id} />
             <Badge variant="secondary">
               {(campaign.curation_campaign_statuses as { label: string }).label}
             </Badge>
@@ -79,8 +82,11 @@ export default async function CurationCampaignDetailPage({
         {campaign.description && <> · {campaign.description}</>}
       </p>
 
-      <div className="mb-6">
-        <CampaignProgressCard metrics={metrics} />
+      <div className="mb-6 grid gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <CampaignProgressCard metrics={metrics} />
+        </div>
+        <CampaignGapsPanel campaignId={id} />
       </div>
 
       {(targetTopics.length > 0 || targetEntities.length > 0) && (
