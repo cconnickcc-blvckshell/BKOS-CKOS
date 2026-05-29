@@ -20,6 +20,13 @@ Production-grade knowledge operating system for AI image and video generation. C
 - Entity explorer UI + knowledge record assignment
 - Validation: `npm run test:entities` (offline) + SQL tests in migration `20250529100002`
 
+## Phase 1.5 Slice 2 (workflow intelligence)
+
+- Lookup tables: `workflow_purposes`, `complexity_levels`, `hardware_tiers`, `workflow_purpose_signals`
+- `workflow_edges`, `workflow_analysis` with JSONB scoring breakdown
+- Deterministic analysis on ingest + **Re-analyze** action
+- See `docs/WORKFLOW_ANALYSIS_SCORING.md` · `npm run test:workflows`
+
 ## Stack
 
 - Next.js 15 · TypeScript · Tailwind · shadcn/ui

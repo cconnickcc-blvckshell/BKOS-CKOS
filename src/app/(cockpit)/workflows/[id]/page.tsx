@@ -1,5 +1,6 @@
 import { getWorkflow } from "@/actions/workflows";
 import { PageHeader } from "@/components/cockpit/page-header";
+import { WorkflowIntelligencePanel } from "@/components/workflows/workflow-intelligence-panel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -26,7 +27,7 @@ export default async function WorkflowDetailPage({
     notFound();
   }
 
-  const { workflow, nodes } = data;
+  const { workflow, nodes, analysis } = data;
 
   return (
     <>
@@ -39,6 +40,13 @@ export default async function WorkflowDetailPage({
               {(workflow.workflow_categories as { label: string }).label}
             </Badge>
           ) : undefined
+        }
+      />
+
+      <WorkflowIntelligencePanel
+        workflowId={id}
+        analysis={
+          analysis as Parameters<typeof WorkflowIntelligencePanel>[0]["analysis"]
         }
       />
 

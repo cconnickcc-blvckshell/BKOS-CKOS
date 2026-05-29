@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getActiveStatusId } from "@/lib/status";
 import { writeAudit } from "@/lib/audit";
 import { parseComfyWorkflow } from "@/lib/workflows/parser";
+import { runWorkflowAnalysis } from "@/lib/workflows/persist-analysis";
 import {
   buildEmbeddingText,
   generateEmbedding,
@@ -41,7 +42,7 @@ export async function createWorkflow(formData: FormData) {
     return { error: "Invalid workflow JSON" };
   }
 
-  const parsedNodes = parseComfyWorkflow(workflowJson);
+  const parsedWorkflow = parseComfyWorkflow(workflowJson);
   const statusId = await getActiveStatusId();
 
   const { data: workflow, error } = await supabase
@@ -51,7 +52,7 @@ export async function createWorkflow(formData: FormData) {
       description: parsed.data.description ?? null,
       category_id: parsed.data.category_id || null,
       workflow_json: workflowJson,
-      node_count: parsedNodes.node_count,
+      node_count: parsedWorkflow.node_count,
       created_by: user.id,
       status: statusId,
     })
@@ -60,19 +61,10 @@ export async function createWorkflow(formData: FormData) {
 
   if (error) return { error: error.message };
 
-  if (parsedNodes.nodes.length > 0) {
-    await supabase.from("workflow_nodes").insert(
-      parsedNodes.nodes.map((n) => ({
-        workflow_id: workflow.id,
-        node_key: n.node_key,
-        class_type: n.class_type,
-        node_type: n.node_type,
-        inputs: n.inputs,
-        outputs: n.outputs,
-        created_by: user.id,
-        status: statusId,
-      }))
-    );
+  try {
+    await runWorkflowAnalysis(workflow.id, workflowJson, user.id);
+  } catch (e) {
+    console.error("Workflow analysis failed:", e);
   }
 
   const embedText = buildEmbeddingText([
@@ -101,6 +93,38 @@ export async function createWorkflow(formData: FormData) {
   return { id: workflow.id };
 }
 
+export async function reanalyzeWorkflow(workflowId: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Unauthorized" };
+
+  const { data: workflow, error } = await supabase
+    .from("workflows")
+    .select("id, workflow_json")
+    .eq("id", workflowId)
+    .single();
+
+  if (error || !workflow) return { error: "Workflow not found" };
+
+  try {
+    await runWorkflowAnalysis(
+      workflowId,
+      workflow.workflow_json as Record<string, unknown>,
+      user.id
+    );
+    await writeAudit("reanalyze", "workflow", workflowId, {});
+    revalidatePath(`/workflows/${workflowId}`);
+    revalidatePath("/workflows");
+    return { ok: true };
+  } catch (e) {
+    return {
+      error: e instanceof Error ? e.message : "Analysis failed",
+    };
+  }
+}
+
 export async function listWorkflows() {
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -113,20 +137,33 @@ export async function listWorkflows() {
 
 export async function getWorkflow(id: string) {
   const supabase = await createClient();
-  const [{ data: workflow }, { data: nodes }] = await Promise.all([
-    supabase
-      .from("workflows")
-      .select("*, workflow_categories(id, code, label)")
-      .eq("id", id)
-      .single(),
-    supabase
-      .from("workflow_nodes")
-      .select("*")
-      .eq("workflow_id", id)
-      .order("node_key"),
-  ]);
+  const [{ data: workflow }, { data: nodes }, { data: analysis }] =
+    await Promise.all([
+      supabase
+        .from("workflows")
+        .select("*, workflow_categories(id, code, label)")
+        .eq("id", id)
+        .single(),
+      supabase
+        .from("workflow_nodes")
+        .select("*")
+        .eq("workflow_id", id)
+        .order("node_key"),
+      supabase
+        .from("workflow_analysis")
+        .select(
+          `*,
+          complexity_levels(id, code, label),
+          workflow_purposes(id, code, label),
+          hardware_tiers(id, code, label)`
+        )
+        .eq("workflow_id", id)
+        .eq("is_current", true)
+        .maybeSingle(),
+    ]);
+
   if (!workflow) throw new Error("Workflow not found");
-  return { workflow, nodes: nodes ?? [] };
+  return { workflow, nodes: nodes ?? [], analysis: analysis ?? null };
 }
 
 export async function listWorkflowCategories() {
