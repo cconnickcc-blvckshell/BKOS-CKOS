@@ -35,6 +35,13 @@ Production-grade knowledge operating system for AI image and video generation. C
 - Failure Explorer UI with create/edit, causes, fixes, and linking
 - See `docs/FAILURE_INTELLIGENCE.md` · `npm run test:failures`
 
+## Phase 1.5 Slice 4 (recipe inheritance)
+
+- `recipe_categories`, `recipe_variant_types`, extended `recipes` with parent/child inheritance
+- `recipe_versions`, `recipe_steps`, `recipe_dependencies`, knowledge/workflow/failure links
+- Deterministic inheritance resolver + Recipe Explorer UI (create/edit, resolved detail view)
+- See `docs/RECIPE_INHERITANCE.md` · `npm run test:recipes`
+
 ## Stack
 
 - Next.js 15 · TypeScript · Tailwind · shadcn/ui
