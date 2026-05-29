@@ -1,6 +1,7 @@
 import { listSources, listSourceTypes } from "@/actions/sources";
 import { PageHeader } from "@/components/cockpit/page-header";
 import { CreateSourceDialog } from "@/components/forms/create-source-dialog";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import {
@@ -20,7 +21,14 @@ export default async function SourcesPage() {
       <PageHeader
         title="Source Explorer"
         description="Track documentation, repos, wikis, and transcripts with version history"
-        actions={<CreateSourceDialog types={types} />}
+        actions={
+          <>
+            <Button size="sm" variant="outline" render={<Link href="/acquisition/new" />}>
+              Add URL & fetch
+            </Button>
+            <CreateSourceDialog types={types} />
+          </>
+        }
       />
 
       <div className="rounded-lg border border-border/60">

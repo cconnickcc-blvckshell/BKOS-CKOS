@@ -10,13 +10,15 @@
     "test:entities": "tsx scripts/validate-entity-resolver.ts",
     "test:workflows": "tsx scripts/validate-workflow-analysis.ts",
     "test:failures": "tsx scripts/validate-failures.ts",
-    "test:recipes": "tsx scripts/validate-recipes.ts"
+    "test:recipes": "tsx scripts/validate-recipes.ts",
+    "test:acquisition": "tsx scripts/validate-acquisition.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
     "@hookform/resolvers": "^5.4.0",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.106.2",
+    "cheerio": "^1.0.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.3.0",
