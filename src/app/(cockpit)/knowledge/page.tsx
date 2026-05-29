@@ -54,6 +54,7 @@ export default async function KnowledgePage() {
             <TableRow>
               <TableHead>Title</TableHead>
               <TableHead>Type</TableHead>
+              <TableHead>Entity</TableHead>
               <TableHead>Summary</TableHead>
               <TableHead>Confidence</TableHead>
             </TableRow>
@@ -61,7 +62,7 @@ export default async function KnowledgePage() {
           <TableBody>
             {records.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={4} className="text-muted-foreground">
+                <TableCell colSpan={5} className="text-muted-foreground">
                   No knowledge records. Create your first structured record.
                 </TableCell>
               </TableRow>
@@ -80,6 +81,19 @@ export default async function KnowledgePage() {
                     <Badge variant="secondary">
                       {(r.knowledge_types as { label?: string })?.label}
                     </Badge>
+                  </TableCell>
+                  <TableCell>
+                    {(r.entities as { canonical_slug?: string } | null)
+                      ?.canonical_slug ? (
+                      <Badge variant="outline" className="font-mono text-xs">
+                        {
+                          (r.entities as { canonical_slug: string })
+                            .canonical_slug
+                        }
+                      </Badge>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
                   </TableCell>
                   <TableCell className="max-w-md truncate text-muted-foreground">
                     {r.summary ?? "—"}

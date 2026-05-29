@@ -101,7 +101,10 @@ export async function listKnowledgeRecords(typeId?: string) {
   const supabase = await createClient();
   let query = supabase
     .from("knowledge_records")
-    .select("*, knowledge_types(id, code, label)")
+    .select(
+      `*, knowledge_types(id, code, label),
+       entities(id, canonical_slug, display_name)`
+    )
     .order("updated_at", { ascending: false });
 
   if (typeId) query = query.eq("knowledge_type_id", typeId);
@@ -115,7 +118,11 @@ export async function getKnowledgeRecord(id: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("knowledge_records")
-    .select("*, knowledge_types(id, code, label)")
+    .select(
+      `*, knowledge_types(id, code, label),
+       entities(id, canonical_slug, display_name, entity_types(id, code, label)),
+       knowledge_domains(id, code, label)`
+    )
     .eq("id", id)
     .single();
   if (error) throw new Error(error.message);

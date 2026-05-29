@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   BookOpen,
+  Boxes,
   Database,
   LayoutDashboard,
   Network,
@@ -22,6 +23,7 @@ import { Button } from "@/components/ui/button";
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/knowledge", label: "Knowledge Explorer", icon: BookOpen },
+  { href: "/entities", label: "Canonical Entities", icon: Boxes },
   { href: "/sources", label: "Source Explorer", icon: Database },
   { href: "/workflows", label: "Workflow Explorer", icon: Workflow },
   { href: "/failures", label: "Failure Explorer", icon: AlertTriangle },

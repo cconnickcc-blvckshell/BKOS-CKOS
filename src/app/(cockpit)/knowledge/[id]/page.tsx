@@ -3,6 +3,7 @@ import {
   getRecordRelationships,
 } from "@/actions/knowledge";
 import { PageHeader } from "@/components/cockpit/page-header";
+import { AssignEntityPanel } from "@/components/entities/assign-entity-panel";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
@@ -37,6 +38,32 @@ export default async function KnowledgeDetailPage({
           </Badge>
         }
       />
+
+      <Card className="mb-6 border-border/60">
+        <CardHeader>
+          <CardTitle className="text-base">Canonical entity</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <AssignEntityPanel
+            knowledgeRecordId={id}
+            currentEntity={
+              record.entities
+                ? {
+                    id: (record.entities as { id: string }).id,
+                    canonical_slug: (record.entities as { canonical_slug: string })
+                      .canonical_slug,
+                    display_name: (record.entities as { display_name: string })
+                      .display_name,
+                  }
+                : null
+            }
+            defaultDomainCode={
+              (record.knowledge_domains as { code?: string } | null)?.code ??
+              "comfyui"
+            }
+          />
+        </CardContent>
+      </Card>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card className="border-border/60">

@@ -36,11 +36,49 @@ export type KnowledgeType = {
   schema_definition: Record<string, unknown>;
 };
 
+export type KnowledgeDomain = {
+  id: string;
+  code: string;
+  label: string;
+  description: string | null;
+};
+
+export type EntityType = {
+  id: string;
+  code: string;
+  label: string;
+  description: string | null;
+};
+
+export type CanonicalEntity = {
+  id: string;
+  domain_id: string;
+  entity_type_id: string;
+  canonical_slug: string;
+  display_name: string;
+  description: string | null;
+  metadata: Record<string, unknown>;
+  knowledge_domains?: KnowledgeDomain;
+  entity_types?: EntityType;
+};
+
+export type EntityAlias = {
+  id: string;
+  entity_id: string;
+  domain_id: string;
+  alias: string;
+  alias_normalized: string;
+  source: string | null;
+  confidence: number | null;
+};
+
 export type KnowledgeRecord = {
   id: string;
   organization_id: string | null;
   knowledge_type_id: string;
   source_id: string | null;
+  domain_id: string | null;
+  entity_id: string | null;
   title: string;
   slug: string | null;
   summary: string | null;
@@ -49,6 +87,8 @@ export type KnowledgeRecord = {
   created_at: string;
   updated_at: string;
   knowledge_types?: KnowledgeType;
+  entities?: CanonicalEntity | null;
+  knowledge_domains?: KnowledgeDomain | null;
 };
 
 export type RelationshipType = {

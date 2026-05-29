@@ -12,6 +12,14 @@ Production-grade knowledge operating system for AI image and video generation. C
 - Hybrid semantic search
 - Knowledge cockpit UI (dashboard, explorers, relationship graph)
 
+## Phase 1.5 Slice 1 (canonical entities)
+
+- `knowledge_domains`, `entity_types`, `entities`, `entity_aliases`
+- `knowledge_records.entity_id` + `domain_id` bridges on core tables
+- Database resolver: `resolve_entity_alias(domain, text)`
+- Entity explorer UI + knowledge record assignment
+- Validation: `npm run test:entities` (offline) + SQL tests in migration `20250529100002`
+
 ## Stack
 
 - Next.js 15 · TypeScript · Tailwind · shadcn/ui
