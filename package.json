@@ -18,7 +18,8 @@
     "test:decision-engine": "tsx scripts/validate-decision-engine.ts",
     "test:curation-campaigns": "tsx scripts/validate-curation-campaigns.ts",
     "test:knowledge-gaps": "tsx scripts/validate-knowledge-gaps.ts",
-    "test:source-discovery": "tsx scripts/validate-source-discovery.ts"
+    "test:source-discovery": "tsx scripts/validate-source-discovery.ts",
+    "test:all": "npm run test:entities && npm run test:workflows && npm run test:failures && npm run test:recipes && npm run test:acquisition && npm run test:normalization && npm run test:embeddings && npm run test:ai-normalization && npm run test:decision-engine && npm run test:curation-campaigns && npm run test:knowledge-gaps && npm run test:source-discovery && npx tsx scripts/verify-migration-order.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
