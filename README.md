@@ -35,6 +35,12 @@ Production-grade knowledge operating system for AI image and video generation. C
 - Failure Explorer UI with create/edit, causes, fixes, and linking
 - See `docs/FAILURE_INTELLIGENCE.md` · `npm run test:failures`
 
+## Phase 2 Slice 5 (decision engine foundation)
+
+- `decision_statuses`, `decision_goal_types`, `decision_constraint_types`, `decision_requests`, recommendations + items + source links
+- Retrieval-first recommendations from knowledge, workflows/analysis, failures, and recipes (cited, no auto-execution)
+- See `docs/DECISION_ENGINE.md` · `npm run test:decision-engine`
+
 ## Phase 2 Slice 4 (AI-assisted draft normalization)
 
 - `ai_provider_configs`, `prompt_templates`, `normalization_ai_runs`

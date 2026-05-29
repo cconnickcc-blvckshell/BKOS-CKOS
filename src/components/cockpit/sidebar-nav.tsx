@@ -36,7 +36,7 @@ const navItems = [
   { href: "/recipes", label: "Recipe Explorer", icon: ChefHat },
   { href: "/search", label: "Semantic Search", icon: Search },
   { href: "/graph", label: "Relationship Graph", icon: Network },
-  { href: "/decision", label: "Decision Engine", icon: Brain, disabled: true },
+  { href: "/decision", label: "Decision Engine", icon: Brain },
 ];
 
 export function SidebarNav() {
@@ -69,19 +69,6 @@ export function SidebarNav() {
           const Icon = item.icon;
           const active =
             pathname === item.href || pathname.startsWith(`${item.href}/`);
-
-          if (item.disabled) {
-            return (
-              <div
-                key={item.href}
-                className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-muted-foreground/50"
-              >
-                <Icon className="h-4 w-4 shrink-0" />
-                <span>{item.label}</span>
-                <span className="ml-auto text-[10px] uppercase">Phase 2</span>
-              </div>
-            );
-          }
 
           return (
             <Link
