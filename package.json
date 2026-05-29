@@ -15,7 +15,8 @@
     "test:normalization": "tsx scripts/validate-normalization.ts",
     "test:embeddings": "tsx scripts/validate-embeddings.ts",
     "test:ai-normalization": "tsx scripts/validate-ai-normalization.ts",
-    "test:decision-engine": "tsx scripts/validate-decision-engine.ts"
+    "test:decision-engine": "tsx scripts/validate-decision-engine.ts",
+    "test:curation-campaigns": "tsx scripts/validate-curation-campaigns.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",

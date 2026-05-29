@@ -35,6 +35,12 @@ Production-grade knowledge operating system for AI image and video generation. C
 - Failure Explorer UI with create/edit, causes, fixes, and linking
 - See `docs/FAILURE_INTELLIGENCE.md` · `npm run test:failures`
 
+## Phase 2 Slice 6 (curation campaigns)
+
+- `curation_campaign_statuses`, `curation_campaigns`, `curation_campaign_sources`, `curation_campaign_outputs`
+- Trusted URL campaigns with fetch, normalization job batching, progress metrics, embedding sync
+- See `docs/CURATION_CAMPAIGNS.md` · `npm run test:curation-campaigns`
+
 ## Phase 2 Slice 5 (decision engine foundation)
 
 - `decision_statuses`, `decision_goal_types`, `decision_constraint_types`, `decision_requests`, recommendations + items + source links
