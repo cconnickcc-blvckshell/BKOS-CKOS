@@ -10,6 +10,13 @@ import {
   isEmbeddingProviderEnabled,
   getEmbeddingProviderStatusMessage,
 } from "@/lib/providers/embedding";
+import {
+  AppError,
+  ErrorCodes,
+  logSystemEvent,
+  mapEmbeddingErrorToCode,
+  recordJobAttempt,
+} from "@/lib/observability";
 
 export type EnqueueResult = {
   jobId?: string;
@@ -184,14 +191,36 @@ export async function processEmbeddingJob(
     max_input_tokens: number;
   };
 
+  const attemptStarted = new Date(job.started_at ?? Date.now());
+
   if (!isEmbeddingProviderEnabled()) {
     const providerDisabledId = await getEmbeddingStatusId("provider_disabled");
-    await finalizeJob(
+    const msg =
+      getEmbeddingProviderStatusMessage() || "Embedding provider disabled";
+    const appErr = new AppError({
+      code: ErrorCodes.EMBEDDING_PROVIDER_DISABLED,
+      userMessage: msg,
+      retryable: false,
+      recommendedNextStep: "Enable EMBEDDING_PROVIDER or use full-text search.",
+    });
+    await finalizeJob(jobId, providerDisabledId, msg, null);
+    await recordJobAttempt({
+      jobType: "embedding_job",
       jobId,
-      providerDisabledId,
-      getEmbeddingProviderStatusMessage() || "Embedding provider disabled",
-      null
-    );
+      status: "skipped",
+      startedAt: attemptStarted,
+      error: appErr,
+      userId,
+    });
+    await logSystemEvent({
+      eventTypeCode: "pipeline_skipped",
+      severity: "info",
+      message: msg,
+      entityType: "embedding_job",
+      entityId: jobId,
+      error: appErr,
+      userId,
+    });
     return { ok: true, skipped: true };
   }
 
@@ -203,13 +232,31 @@ export async function processEmbeddingJob(
       config.max_input_tokens
     );
     if (!result) {
-      await finalizeJob(
+      const appErr = new AppError({
+        code: ErrorCodes.EMBEDDING_PROVIDER_UNREACHABLE,
+        userMessage: "Embedding provider returned no vector.",
+        retryable: true,
+        recommendedNextStep: "Verify EMBEDDING_BASE_URL and that the model is running.",
+      });
+      await finalizeJob(jobId, failedId, appErr.userMessage, null);
+      await recordJobAttempt({
+        jobType: "embedding_job",
         jobId,
-        failedId,
-        "Embedding provider returned no vector",
-        null
-      );
-      return { ok: false, error: "Embedding provider returned no vector" };
+        status: "retryable",
+        startedAt: attemptStarted,
+        error: appErr,
+        userId,
+      });
+      await logSystemEvent({
+        eventTypeCode: "pipeline_retryable",
+        severity: "warning",
+        message: appErr.userMessage,
+        entityType: "embedding_job",
+        entityId: jobId,
+        error: appErr,
+        userId,
+      });
+      return { ok: false, error: appErr.userMessage };
     }
     const vector = result.vector;
     const tokenEstimate = result.tokenEstimate;
@@ -249,11 +296,59 @@ export async function processEmbeddingJob(
       entity_id: job.entity_id,
     });
 
+    await recordJobAttempt({
+      jobType: "embedding_job",
+      jobId,
+      status: "success",
+      startedAt: attemptStarted,
+      metadata: {
+        provider: runtime.kind,
+        model: runtime.model,
+        content_hash: contentHash,
+      },
+      userId,
+    });
+
+    await logSystemEvent({
+      eventTypeCode: "pipeline_succeeded",
+      severity: "success",
+      message: "Embedding stored",
+      entityType: "embedding_job",
+      entityId: jobId,
+      metadata: { provider: runtime.kind, dimensions: runtime.dimensions },
+      userId,
+    });
+
     return { ok: true };
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Embedding failed";
-    await finalizeJob(jobId, failedId, msg, null);
-    return { ok: false, error: msg };
+    const code = mapEmbeddingErrorToCode(msg);
+    const appErr = new AppError({
+      code,
+      userMessage: msg,
+      technicalDetail: msg,
+      retryable: code !== ErrorCodes.EMBEDDING_DIMENSION_MISMATCH,
+      recommendedNextStep: "Check embedding provider diagnostics.",
+    });
+    await finalizeJob(jobId, failedId, appErr.userMessage, null);
+    await recordJobAttempt({
+      jobType: "embedding_job",
+      jobId,
+      status: appErr.retryable ? "retryable" : "failed",
+      startedAt: attemptStarted,
+      error: appErr,
+      userId,
+    });
+    await logSystemEvent({
+      eventTypeCode: appErr.retryable ? "pipeline_retryable" : "pipeline_failed",
+      severity: appErr.retryable ? "warning" : "failed",
+      message: appErr.userMessage,
+      entityType: "embedding_job",
+      entityId: jobId,
+      error: appErr,
+      userId,
+    });
+    return { ok: false, error: appErr.userMessage };
   }
 }
 

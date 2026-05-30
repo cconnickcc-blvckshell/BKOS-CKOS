@@ -20,6 +20,8 @@ import {
   FolderKanban,
   CircleAlert,
   Lightbulb,
+  Activity,
+  ScrollText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
@@ -43,6 +45,8 @@ const navItems = [
   { href: "/search", label: "Semantic Search", icon: Search },
   { href: "/graph", label: "Relationship Graph", icon: Network },
   { href: "/decision", label: "Decision Engine", icon: Brain },
+  { href: "/health", label: "System Health", icon: Activity },
+  { href: "/events", label: "System Events", icon: ScrollText },
 ];
 
 export function SidebarNav() {

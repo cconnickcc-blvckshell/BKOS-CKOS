@@ -44,7 +44,14 @@ export async function generateAiDraftsForJob(jobId: string) {
       outputIds: result.outputIds,
     };
   } catch (e) {
-    return { error: e instanceof Error ? e.message : "AI draft generation failed" };
+    const { handleActionError } = await import("@/lib/observability/action-result");
+    const err = await handleActionError(e, {
+      entityType: "normalization_job",
+      entityId: jobId,
+      userId: user.id,
+      fallbackCode: undefined,
+    });
+    return { error: err.error, code: err.code, retryable: err.retryable };
   }
 }
 
