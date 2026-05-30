@@ -63,7 +63,7 @@ Production-grade knowledge operating system for AI image and video generation. C
 
 - `ai_provider_configs`, `prompt_templates`, `normalization_ai_runs`
 - AI proposes `normalization_job_outputs` only (`is_ai_proposal`, `source_quote_refs`, `extraction_notes`)
-- Human approve/reject before publish; `OPENAI_API_KEY` optional with graceful error
+- Human approve/reject before publish; AI provider optional (`AI_PROVIDER=disabled` by default)
 - See `docs/AI_NORMALIZATION.md` · `npm run test:ai-normalization`
 
 ## Phase 2 Slice 3 (embeddings automation)
@@ -99,18 +99,18 @@ Production-grade knowledge operating system for AI image and video generation. C
 - Next.js 15 · TypeScript · Tailwind · shadcn/ui
 - Supabase (Postgres + Auth + pgvector) — single source of truth
 
-## Quick start
+## Quick start (local-first)
 
-### 1. Supabase project
+See **`docs/LOCAL_FIRST_SETUP.md`** for full instructions.
 
-Create a project at [supabase.com](https://supabase.com), then apply migrations:
+### 1. Supabase (local or hosted)
 
 ```bash
-npx supabase link --project-ref YOUR_REF
-npx supabase db push
+npx supabase start
+npx supabase db reset
 ```
 
-Or run the SQL in `supabase/migrations/` via the Supabase SQL editor.
+Or link a hosted project: `npx supabase link` then `npx supabase db push`.
 
 ### 2. Environment
 
@@ -118,9 +118,7 @@ Or run the SQL in `supabase/migrations/` via the Supabase SQL editor.
 cp .env.example .env.local
 ```
 
-Set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
-
-Optional: `OPENAI_API_KEY` for embedding generation (semantic search).
+Defaults use `AI_PROVIDER=disabled` and `EMBEDDING_PROVIDER=disabled` — **no OpenAI required**. For local Qwen/Ollama/LM Studio, copy `.env.local.example` instead.
 
 ### 3. Run
 

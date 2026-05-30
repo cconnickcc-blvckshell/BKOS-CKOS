@@ -55,7 +55,12 @@ export async function semanticSearchAll(
 ) {
   const embedding = await generateEmbedding(query);
   if (!embedding) {
-    return { results: [], enriched: [], message: "Set OPENAI_API_KEY for semantic search" };
+    return {
+      results: [],
+      enriched: [],
+      message:
+        "Semantic search requires an embedding provider. Configure EMBEDDING_PROVIDER or use full-text search on Knowledge.",
+    };
   }
 
   const supabase = await createClient();
