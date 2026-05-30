@@ -14,6 +14,13 @@ import {
   matchTrustedDomain,
   type TrustedDomainRow,
 } from "@/lib/acquisition/trusted-domains";
+import {
+  AppError,
+  ErrorCodes,
+  logSystemEvent,
+  mapFetchErrorToCode,
+  recordJobAttempt,
+} from "@/lib/observability";
 
 export type RunFetchResult =
   | {
@@ -22,20 +29,98 @@ export type RunFetchResult =
       sourceVersionId: string;
       extractionId: string;
     }
-  | { ok: false; error: string; jobId?: string };
+  | {
+      ok: false;
+      error: string;
+      code: string;
+      retryable: boolean;
+      recommendedNextStep: string;
+      jobId?: string;
+    };
+
+async function failFetch(
+  jobId: string,
+  userId: string,
+  startedAt: Date,
+  appErr: AppError,
+  meta: Record<string, unknown>
+): Promise<RunFetchResult> {
+  const supabase = await createClient();
+  const failedId = await getAcquisitionStatusId("failed");
+  const attemptStatus = appErr.retryable ? "retryable" : "failed";
+
+  await supabase
+    .from("source_fetch_jobs")
+    .update({
+      status_id: failedId,
+      error_message: appErr.userMessage,
+      completed_at: new Date().toISOString(),
+      metadata: { ...meta, error_code: appErr.code, retryable: appErr.retryable },
+    })
+    .eq("id", jobId);
+
+  await recordJobAttempt({
+    jobType: "source_fetch_job",
+    jobId,
+    status: attemptStatus,
+    startedAt,
+    error: appErr,
+    metadata: meta,
+    userId,
+  });
+
+  await logSystemEvent({
+    eventTypeCode: appErr.retryable ? "pipeline_retryable" : "pipeline_failed",
+    severity: appErr.retryable ? "warning" : "failed",
+    message: appErr.userMessage,
+    entityType: "source_fetch_job",
+    entityId: jobId,
+    error: appErr,
+    metadata: meta,
+    userId,
+  });
+
+  await writeAudit("source_fetch_failed", "source_fetch_job", jobId, {
+    error_code: appErr.code,
+    ...meta,
+  });
+
+  return {
+    ok: false,
+    error: appErr.userMessage,
+    code: appErr.code,
+    retryable: appErr.retryable,
+    recommendedNextStep: appErr.recommendedNextStep,
+    jobId,
+  };
+}
 
 export async function runSourceFetch(
   sourceId: string,
   userId: string,
   urlInput: string
 ): Promise<RunFetchResult> {
+  const startedAt = new Date();
   const supabase = await createClient();
 
   let normalizedUrl: string;
   try {
     normalizedUrl = normalizeSourceUrl(urlInput);
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Invalid URL" };
+    const appErr = new AppError({
+      code: ErrorCodes.URL_NOT_TRUSTED,
+      userMessage: "The URL is not valid. Use a full https:// link.",
+      technicalDetail: e instanceof Error ? e.message : "Invalid URL",
+      retryable: false,
+      recommendedNextStep: "Correct the URL and try again.",
+    });
+    return {
+      ok: false,
+      error: appErr.userMessage,
+      code: appErr.code,
+      retryable: false,
+      recommendedNextStep: appErr.recommendedNextStep,
+    };
   }
 
   const hostname = hostnameFromUrl(normalizedUrl);
@@ -45,13 +130,52 @@ export async function runSourceFetch(
     .select("id, domain, label, is_active, allow_subdomains")
     .eq("is_active", true);
 
-  if (trustedErr) return { ok: false, error: trustedErr.message };
+  if (trustedErr) {
+    const appErr = new AppError({
+      code: ErrorCodes.SUPABASE_RPC_FAILED,
+      userMessage: "Could not load trusted domains.",
+      technicalDetail: trustedErr.message,
+      retryable: true,
+      recommendedNextStep: "Check Supabase connectivity and retry.",
+    });
+    return {
+      ok: false,
+      error: appErr.userMessage,
+      code: appErr.code,
+      retryable: true,
+      recommendedNextStep: appErr.recommendedNextStep,
+    };
+  }
 
   let trusted: TrustedDomainRow;
   try {
     trusted = assertTrustedUrl(normalizedUrl, trustedRows ?? []);
-  } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Untrusted domain" };
+  } catch {
+    const appErr = new AppError({
+      code: ErrorCodes.URL_NOT_TRUSTED,
+      userMessage: `Domain "${hostname}" is not on the trusted source list.`,
+      technicalDetail: `URL: ${normalizedUrl}`,
+      retryable: false,
+      recommendedNextStep:
+        "Use a URL from comfyui-wiki.com, docs.comfy.org, github.com, huggingface.co, or arxiv.org.",
+      metadata: { hostname, normalized_url: normalizedUrl },
+    });
+    await logSystemEvent({
+      eventTypeCode: "pipeline_failed",
+      severity: "failed",
+      message: appErr.userMessage,
+      entityType: "source",
+      entityId: sourceId,
+      error: appErr,
+      userId,
+    });
+    return {
+      ok: false,
+      error: appErr.userMessage,
+      code: appErr.code,
+      retryable: false,
+      recommendedNextStep: appErr.recommendedNextStep,
+    };
   }
 
   const { data: policyRow } = await supabase
@@ -92,11 +216,43 @@ export async function runSourceFetch(
       status_id: pendingId,
       created_by: userId,
       status: entityStatusId,
+      metadata: {
+        trusted_domain: trusted.domain,
+        robots_respected: policy.respect_robots_txt,
+      },
     })
     .select("id")
     .single();
 
-  if (jobErr || !job) return { ok: false, error: jobErr?.message ?? "Failed to create job" };
+  if (jobErr || !job) {
+    const appErr = new AppError({
+      code: ErrorCodes.SUPABASE_RPC_FAILED,
+      userMessage: "Could not create fetch job.",
+      technicalDetail: jobErr?.message,
+      retryable: true,
+      recommendedNextStep: "Retry fetch or check database migrations.",
+    });
+    return {
+      ok: false,
+      error: appErr.userMessage,
+      code: appErr.code,
+      retryable: true,
+      recommendedNextStep: appErr.recommendedNextStep,
+    };
+  }
+
+  await logSystemEvent({
+    eventTypeCode: "pipeline_started",
+    severity: "info",
+    message: `Fetch started for ${normalizedUrl}`,
+    entityType: "source_fetch_job",
+    entityId: job.id,
+    metadata: {
+      normalized_url: normalizedUrl,
+      trusted_domain: trusted.domain,
+    },
+    userId,
+  });
 
   await writeAudit("source_fetch_start", "source_fetch_job", job.id, {
     source_id: sourceId,
@@ -107,46 +263,67 @@ export async function runSourceFetch(
     .from("source_fetch_jobs")
     .update({
       status_id: inProgressId,
-      started_at: new Date().toISOString(),
+      started_at: startedAt.toISOString(),
     })
     .eq("id", job.id);
 
+  const fetchStarted = Date.now();
   const outcome = await fetchTrustedPage(normalizedUrl, policy);
+  const fetchDurationMs = Date.now() - fetchStarted;
 
   if (!outcome.ok) {
+    const code = mapFetchErrorToCode(outcome.error, outcome.httpStatus);
+    const row = await import("@/lib/observability/lookup").then((m) =>
+      m.getErrorCodeRow(code)
+    );
+    const appErr = new AppError({
+      code,
+      userMessage: row?.description ?? outcome.error,
+      technicalDetail: outcome.error,
+      retryable: row?.retryable ?? true,
+      recommendedNextStep:
+        row?.recommended_fixes?.[0] ?? "Review fetch diagnostics and retry if appropriate.",
+      metadata: {
+        http_status: outcome.httpStatus,
+        content_type: outcome.contentType,
+        fetch_duration_ms: fetchDurationMs,
+        trusted_domain: trusted.domain,
+        robots_respected: policy.respect_robots_txt,
+      },
+    });
+
     await supabase
       .from("source_fetch_jobs")
       .update({
         status_id: failedId,
         http_status: outcome.httpStatus,
         content_type: outcome.contentType,
-        error_message: outcome.error,
+        error_message: appErr.userMessage,
         completed_at: new Date().toISOString(),
+        metadata: appErr.metadata,
       })
       .eq("id", job.id);
 
-    await writeAudit("source_fetch_failed", "source_fetch_job", job.id, {
-      error: outcome.error,
+    return failFetch(job.id, userId, startedAt, appErr, {
+      ...appErr.metadata,
+      normalized_url: normalizedUrl,
     });
-
-    return { ok: false, error: outcome.error, jobId: job.id };
   }
 
   const finalHost = hostnameFromUrl(outcome.finalUrl);
   if (!matchTrustedDomain(finalHost, trustedRows ?? [])) {
-    const msg = `Redirect landed on untrusted domain: ${finalHost}`;
-    await supabase
-      .from("source_fetch_jobs")
-      .update({
-        status_id: failedId,
-        http_status: outcome.httpStatus,
-        content_type: outcome.contentType,
-        error_message: msg,
-        completed_at: new Date().toISOString(),
-      })
-      .eq("id", job.id);
-    await writeAudit("source_fetch_failed", "source_fetch_job", job.id, { error: msg });
-    return { ok: false, error: msg, jobId: job.id };
+    const appErr = new AppError({
+      code: ErrorCodes.URL_NOT_TRUSTED,
+      userMessage: `Redirect landed on untrusted domain: ${finalHost}`,
+      technicalDetail: outcome.finalUrl,
+      retryable: false,
+      recommendedNextStep: "Use a URL that does not redirect off trusted domains.",
+      metadata: {
+        final_url: outcome.finalUrl,
+        fetch_duration_ms: fetchDurationMs,
+      },
+    });
+    return failFetch(job.id, userId, startedAt, appErr, appErr.metadata);
   }
 
   const { data: latest } = await supabase
@@ -182,21 +359,42 @@ export async function runSourceFetch(
     .single();
 
   if (versionErr || !version) {
-    await supabase
-      .from("source_fetch_jobs")
-      .update({
-        status_id: failedId,
-        error_message: versionErr?.message ?? "Version insert failed",
-        completed_at: new Date().toISOString(),
-      })
-      .eq("id", job.id);
-    return { ok: false, error: versionErr?.message ?? "Version insert failed", jobId: job.id };
+    const appErr = new AppError({
+      code: ErrorCodes.SUPABASE_RPC_FAILED,
+      userMessage: "Fetch succeeded but saving the source version failed.",
+      technicalDetail: versionErr?.message,
+      retryable: true,
+      recommendedNextStep: "Retry fetch; check database logs if this persists.",
+    });
+    return failFetch(job.id, userId, startedAt, appErr, { fetch_duration_ms: fetchDurationMs });
   }
 
   const extracted =
     outcome.contentType.includes("html")
       ? extractFromHtml(outcome.body, outcome.finalUrl)
       : extractFromPlainText(outcome.body, outcome.finalUrl);
+
+  const textLen =
+    (extracted.extracted_markdown?.length ?? 0) +
+    (extracted.extracted_text?.length ?? 0);
+
+  if (textLen < 20) {
+    const appErr = new AppError({
+      code: ErrorCodes.EXTRACTION_EMPTY_CONTENT,
+      userMessage: "Page fetched but extraction produced almost no text.",
+      technicalDetail: `Extracted length: ${textLen}`,
+      retryable: false,
+      recommendedNextStep:
+        "Try a documentation page with static HTML content, not a shell-only or blocked page.",
+      metadata: {
+        fetch_duration_ms: fetchDurationMs,
+        http_status: outcome.httpStatus,
+        content_type: outcome.contentType,
+        extraction_size: textLen,
+      },
+    });
+    return failFetch(job.id, userId, startedAt, appErr, appErr.metadata);
+  }
 
   const { data: extraction, error: extractErr } = await supabase
     .from("source_extraction_results")
@@ -220,21 +418,17 @@ export async function runSourceFetch(
     .single();
 
   if (extractErr || !extraction) {
-    await supabase
-      .from("source_fetch_jobs")
-      .update({
-        status_id: failedId,
-        http_status: outcome.httpStatus,
-        content_type: outcome.contentType,
-        error_message: extractErr?.message ?? "Extraction save failed",
-        completed_at: new Date().toISOString(),
-      })
-      .eq("id", job.id);
-    return {
-      ok: false,
-      error: extractErr?.message ?? "Extraction save failed",
-      jobId: job.id,
-    };
+    const appErr = new AppError({
+      code: ErrorCodes.SUPABASE_RPC_FAILED,
+      userMessage: "Extraction could not be saved.",
+      technicalDetail: extractErr?.message,
+      retryable: true,
+      recommendedNextStep: "Retry fetch.",
+    });
+    return failFetch(job.id, userId, startedAt, appErr, {
+      extraction_size: textLen,
+      fetch_duration_ms: fetchDurationMs,
+    });
   }
 
   await supabase
@@ -244,14 +438,46 @@ export async function runSourceFetch(
       http_status: outcome.httpStatus,
       content_type: outcome.contentType,
       completed_at: new Date().toISOString(),
+      error_message: null,
       metadata: {
         final_url: outcome.finalUrl,
         bytes: outcome.body.length,
         source_version_id: version.id,
         extraction_id: extraction.id,
+        fetch_duration_ms: fetchDurationMs,
+        extraction_size: textLen,
+        trusted_domain: trusted.domain,
       },
     })
     .eq("id", job.id);
+
+  await recordJobAttempt({
+    jobType: "source_fetch_job",
+    jobId: job.id,
+    status: "success",
+    startedAt,
+    metadata: {
+      fetch_duration_ms: fetchDurationMs,
+      extraction_size: textLen,
+      http_status: outcome.httpStatus,
+    },
+    userId,
+  });
+
+  await logSystemEvent({
+    eventTypeCode: "pipeline_succeeded",
+    severity: "success",
+    message: `Fetch and extraction succeeded (${textLen} chars)`,
+    entityType: "source_fetch_job",
+    entityId: job.id,
+    metadata: {
+      fetch_duration_ms: fetchDurationMs,
+      extraction_size: textLen,
+      http_status: outcome.httpStatus,
+      content_type: outcome.contentType,
+    },
+    userId,
+  });
 
   const sourceUpdate: Record<string, string> = {
     url: outcome.finalUrl,

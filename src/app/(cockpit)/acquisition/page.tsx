@@ -11,6 +11,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { FetchJobDiagnostics } from "@/components/observability/fetch-job-diagnostics";
+import { StatusBadge } from "@/components/observability/status-badge";
 
 export default async function AcquisitionDashboardPage() {
   const [jobs, domains] = await Promise.all([listFetchJobs(), listTrustedDomains()]);
@@ -63,6 +65,8 @@ export default async function AcquisitionDashboardPage() {
               jobs.map((j) => {
                 const src = j.sources as { id: string; title: string } | null;
                 const st = j.acquisition_statuses as { label: string; code: string } | null;
+                const meta = (j.metadata ?? {}) as Record<string, unknown>;
+                const errorCode = meta.error_code as string | undefined;
                 return (
                   <TableRow key={j.id}>
                     <TableCell>
@@ -87,7 +91,17 @@ export default async function AcquisitionDashboardPage() {
                         {st?.label ?? "—"}
                       </Badge>
                       {j.error_message && (
-                        <p className="mt-1 text-xs text-destructive">{j.error_message}</p>
+                        <div className="mt-1 space-y-1">
+                          {errorCode && (
+                            <span className="font-mono text-xs text-muted-foreground">
+                              {errorCode}
+                            </span>
+                          )}
+                          {meta.retryable === true && (
+                            <StatusBadge status="retryable" className="ml-1" />
+                          )}
+                          <p className="text-xs text-destructive">{j.error_message}</p>
+                        </div>
                       )}
                     </TableCell>
                     <TableCell>{j.http_status ?? "—"}</TableCell>
@@ -101,6 +115,20 @@ export default async function AcquisitionDashboardPage() {
           </TableBody>
         </Table>
       </div>
+
+      {jobs.some((j) => j.error_message) && (
+        <section className="mt-8 space-y-4">
+          <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
+            Failed fetch diagnostics
+          </h2>
+          {jobs
+            .filter((j) => j.error_message)
+            .slice(0, 5)
+            .map((j) => (
+              <FetchJobDiagnostics key={j.id} jobId={j.id} />
+            ))}
+        </section>
+      )}
     </>
   );
 }

@@ -36,7 +36,12 @@ export async function createWorkflow(formData: FormData) {
   try {
     workflowJson = JSON.parse(parsed.data.workflow_json);
   } catch {
-    return { error: "Invalid workflow JSON" };
+    return {
+      error:
+        "Workflow JSON is invalid. Export a valid ComfyUI workflow JSON file and try again.",
+      code: "WORKFLOW_JSON_INVALID",
+      retryable: false,
+    };
   }
 
   const parsedWorkflow = parseComfyWorkflow(workflowJson);

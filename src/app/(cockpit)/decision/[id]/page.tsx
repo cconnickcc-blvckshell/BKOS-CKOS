@@ -2,6 +2,7 @@ import { getDecisionRequest } from "@/actions/decision";
 import { PageHeader } from "@/components/cockpit/page-header";
 import { DecisionRecommendationView } from "@/components/decision/decision-recommendation-view";
 import { RebuildRecommendationButton } from "@/components/decision/rebuild-recommendation-button";
+import { DecisionDiagnostics } from "@/components/observability/decision-diagnostics";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
@@ -82,6 +83,10 @@ export default async function DecisionRequestDetailPage({
           </CardContent>
         </Card>
       )}
+
+      <div className="mb-6">
+        <DecisionDiagnostics requestId={id} />
+      </div>
 
       {recommendation ? (
         <DecisionRecommendationView

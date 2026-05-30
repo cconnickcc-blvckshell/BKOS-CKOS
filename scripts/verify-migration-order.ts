@@ -81,7 +81,7 @@ for (const file of files) {
 console.log(`\n${passed} checks passed, ${failed} failed`);
 console.log(`Tables created across chain: ${createdTables.size}`);
 
-const expectedMin = 14;
+const expectedMin = 16;
 if (files.length < expectedMin) {
   fail(`expected at least ${expectedMin} migrations, got ${files.length}`);
 }

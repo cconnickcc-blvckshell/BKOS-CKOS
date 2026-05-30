@@ -94,6 +94,12 @@ Production-grade knowledge operating system for AI image and video generation. C
 - Deterministic inheritance resolver + Recipe Explorer UI (create/edit, resolved detail view)
 - See `docs/RECIPE_INHERITANCE.md` · `npm run test:recipes`
 
+## Observability
+
+- Structured error codes, system events, and job attempts — see `docs/OBSERVABILITY.md`
+- **`/health`** system dashboard · **`/events`** pipeline log
+- Diagnostics panels on acquisition, normalization, and decision pages
+
 ## Stack
 
 - Next.js 15 · TypeScript · Tailwind · shadcn/ui

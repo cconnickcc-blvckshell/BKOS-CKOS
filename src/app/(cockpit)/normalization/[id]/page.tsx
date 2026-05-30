@@ -2,6 +2,7 @@ import { getNormalizationJob } from "@/actions/normalization";
 import { getAiDraftAvailability } from "@/actions/normalization-ai";
 import { PageHeader } from "@/components/cockpit/page-header";
 import { AiRunsPanel } from "@/components/normalization/ai-runs-panel";
+import { NormalizationDiagnostics } from "@/components/observability/normalization-diagnostics";
 import { GenerateAiDraftsButton } from "@/components/normalization/generate-ai-drafts-button";
 import { NormalizationOutputEditor } from "@/components/normalization/normalization-output-editor";
 import { Badge } from "@/components/ui/badge";
@@ -137,6 +138,7 @@ export default async function NormalizationJobDetailPage({
         </div>
 
         <aside className="space-y-6">
+          <NormalizationDiagnostics jobId={id} />
           <AiRunsPanel jobId={id} />
         </aside>
       </div>
